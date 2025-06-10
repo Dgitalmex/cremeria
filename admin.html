@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel de Administración</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="p-4 bg-light">
+  <div class="container" id="loginContainer">
+    <h1 class="text-center mb-4">Acceso al Panel de Administración</h1>
+    <div class="card">
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="adminPassword" class="form-label">Contraseña:</label>
+          <input type="password" class="form-control" id="adminPassword" />
+        </div>
+        <button class="btn btn-primary" onclick="verificarPassword()">Ingresar</button>
+      </div>
+    </div>
+  </div>
+  <div class="container d-none" id="adminContainer">
+    <h1 class="text-center mb-4">Panel de Administración</h1>
+    <div class="card mb-4">
+      <div class="card-header">Registrar Empleado</div>
+      <div class="card-body">
+        <form id="registroEmpleadoForm">
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <input type="text" class="form-control" id="nuevoId" placeholder="ID del nuevo empleado" required />
+            </div>
+            <div class="col-md-6">
+              <input type="text" class="form-control" id="nuevoNombre" placeholder="Nombre del nuevo empleado" required />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success">Registrar Empleado</button>
+        </form>
+      </div>
+    </div>
+    <div class="card mb-4">
+      <div class="card-header">Registros</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="filtroFecha" class="form-label">Filtrar por fecha</label>
+          <input type="date" class="form-control" id="filtroFecha" />
+        </div>
+        <button class="btn btn-secondary mb-3" onclick="filtrarRegistros()">Filtrar</button>
+        <button class="btn btn-info mb-3" onclick="descargarExcel()">Descargar Excel</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="tablaRegistros">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Foto</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="text-center">
+      <a href="index.html" class="btn btn-dark">Volver al Registro</a>
+    </div>
+  </div>
+  <script>
+    const PASSWORD = 'admin123';
+
+    function verificarPassword() {
+      const input = document.getElementById('adminPassword').value;
+      if (input === PASSWORD) {
+        document.getElementById('loginContainer').classList.add('d-none');
+        document.getElementById('adminContainer').classList.remove('d-none');
+        cargarDatos();
+      } else {
+        alert('Contraseña incorrecta');
+      }
+    }
+
+    let empleados = {};
+    let registros = [];
+
+    function cargarDatos() {
+      empleados = JSON.parse(localStorage.getItem('empleados') || '{}');
+      registros = JSON.parse(localStorage.getItem('registros') || '[]');
+      renderizarRegistros(registros);
+    }
+
+    document.getElementById('registroEmpleadoForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const id = document.getElementById('nuevoId').value.trim();
+      const nombre = document.getElementById('nuevoNombre').value.trim();
+      if (!id || !nombre) {
+        alert('Debe llenar todos los campos');
+        return;
+      }
+      empleados[id] = nombre;
+      localStorage.setItem('empleados', JSON.stringify(empleados));
+      alert('Empleado registrado');
+      this.reset();
+    });
+
+    function renderizarRegistros(filtrados) {
+      const tbody = document.querySelector('#tablaRegistros tbody');
+      tbody.innerHTML = '';
+      filtrados.forEach((reg, index) => {
+        const row = `
+          <tr>
+            <td>${reg.fecha}</td>
+            <td>${reg.hora}</td>
+            <td>${reg.id}</td>
+            <td>${reg.nombre}</td>
+            <td>${reg.tipo}</td>
+            <td><img src="${reg.foto}" width="100" class="img-thumbnail" /></td>
+            <td>
+              <button class="btn btn-sm btn-warning me-1" onclick="editarRegistro(${index})">Editar</button>
+              <button class="btn btn-sm btn-danger" onclick="eliminarRegistro(${index})">Eliminar</button>
+            </td>
+          </tr>`;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function filtrarRegistros() {
+      const fecha = document.getElementById('filtroFecha').value;
+      if (!fecha) {
+        renderizarRegistros(registros);
+        return;
+      }
+      const filtrados = registros.filter((r) => r.fecha === fecha);
+      renderizarRegistros(filtrados);
+    }
+
+    function descargarExcel() {
+      let csv = 'Fecha,Hora,ID,Nombre,Tipo\n';
+      registros.forEach((r) => {
+        csv += `${r.fecha},${r.hora},${r.id},${r.nombre},${r.tipo}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'registros.csv';
+      a.click();
+    }
+
+    function eliminarRegistro(index) {
+      if (confirm('¿Estás seguro de eliminar este registro?')) {
+        registros.splice(index, 1);
+        localStorage.setItem('registros', JSON.stringify(registros));
+        renderizarRegistros(registros);
+      }
+    }
+
+    function editarRegistro(index) {
+      const nuevoTipo = prompt('Nuevo tipo (Entrada/Salida):', registros[index].tipo);
+      if (nuevoTipo && (nuevoTipo === 'Entrada' || nuevoTipo === 'Salida')) {
+        registros[index].tipo = nuevoTipo;
+        localStorage.setItem('registros', JSON.stringify(registros));
+        renderizarRegistros(registros);
+      } else {
+        alert('Tipo no válido. Debe ser "Entrada" o "Salida".');
+      }
+    }
+  </script>
+</body>
+</html>
