@@ -1,0 +1,91 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Registro de Entradas y Salidas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="p-4 bg-light">
+  <div class="container">
+    <h1 class="text-center mb-4">Registro de Entrada/Salida</h1>
+    <form id="registroForm">
+      <div class="mb-3">
+        <label for="idEmpleado" class="form-label">ID del Empleado</label>
+        <input type="text" class="form-control" id="idEmpleado" required />
+      </div>
+      <div class="mb-3">
+        <label for="nombreEmpleado" class="form-label">Nombre</label>
+        <input type="text" class="form-control" id="nombreEmpleado" disabled />
+      </div>
+      <div class="mb-3">
+        <select class="form-select" id="tipoRegistro" required>
+          <option value="">Seleccione</option>
+          <option value="Entrada">Entrada</option>
+          <option value="Salida">Salida</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Registrar</button>
+    </form>
+    <div class="mt-4 text-center">
+      <a href="admin.html" class="btn btn-secondary">Ir al Panel de Administración</a>
+    </div>
+  </div>
+  <script>
+    let empleados = JSON.parse(localStorage.getItem('empleados') || '{}');
+    let registros = JSON.parse(localStorage.getItem('registros') || '[]');
+
+    document.getElementById('idEmpleado').addEventListener('blur', function () {
+      const id = this.value.trim();
+      document.getElementById('nombreEmpleado').value = empleados[id] || 'No encontrado';
+    });
+
+    document.getElementById('registroForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const id = document.getElementById('idEmpleado').value.trim();
+      if (!empleados[id]) {
+        alert('Empleado no registrado. Por favor, regístrelo en el panel de administración primero.');
+        return;
+      }
+
+      const nombre = empleados[id];
+      const tipo = document.getElementById('tipoRegistro').value;
+      const fechaObj = new Date();
+      const fecha = fechaObj.toISOString().split('T')[0];
+      const hora = fechaObj.toTimeString().split(' ')[0];
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Tu navegador no soporta cámara.');
+        return;
+      }
+
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+
+      navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+        video.srcObject = stream;
+        video.play();
+        alert('Se activará la cámara para tomar tu foto. Presiona OK y mira a la cámara.');
+        setTimeout(() => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const fotoDataUrl = canvas.toDataURL('image/png');
+          stream.getTracks().forEach((track) => track.stop());
+
+          registros.push({ fecha, hora, id, nombre, tipo, foto: fotoDataUrl });
+          localStorage.setItem('registros', JSON.stringify(registros));
+
+          alert('Registro guardado con foto.');
+          e.target.reset();
+          document.getElementById('nombreEmpleado').value = '';
+        }, 1500);
+      }).catch((err) => {
+        alert('No se pudo acceder a la cámara: ' + err);
+      });
+    });
+  </script>
+</body>
+</html>
